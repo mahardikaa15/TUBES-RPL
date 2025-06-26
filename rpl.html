@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThaiTeaKampus</title>
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #FFF9F0;
+          margin: 0;
+          padding: 0;
+        }
+        header {
+          background-color: #F4A261;
+          padding: 1rem;
+          text-align: center;
+          color: white;
+        }
+        .container {
+          max-width: 480px;
+          margin: auto;
+          padding: 1rem;
+        }
+        input, select, button {
+          width: 100%;
+          padding: 0.75rem;
+          margin: 0.5rem 0;
+          border-radius: 8px;
+          border: 1px solid #ccc;
+          font-size: 1rem;
+        }
+        button {
+          background-color: #8D6E63;
+          color: white;
+          border: none;
+          cursor: pointer;
+        }
+        .card {
+          background-color: white;
+          padding: 1rem;
+          margin: 1rem 0;
+          border-radius: 10px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .total {
+          font-weight: bold;
+          margin-top: 1rem;
+        }
+        nav {
+          display: flex;
+          justify-content: space-around;
+          background-color: #FFEBD6;
+          padding: 1rem 0;
+          position: fixed;
+          bottom: 0;
+          width: 100%;
+          border-top: 1px solid #F4A261;
+        }
+        nav a {
+          text-decoration: none;
+          color: #8D6E63;
+          font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>ThaiTeaKampus</h1>
+</header>
+<div class="container" id="content"></div>
+<nav id="nav" style="display:none">
+    <a href="#" onclick="tampilkan('dashboard')">Dashboard</a>
+    <a href="#" onclick="tampilkan('input')">Pesan</a>
+    <a href="#" onclick="tampilkan('produk')">Produk</a>
+    <a href="#" onclick="tampilkan('laporan')">Laporan</a>
+</nav>
+<script>
+    let produkData = JSON.parse(localStorage.getItem("produkData")) || [
+      { nama: "Thai Tea", harga: 15000, stok: 20 },
+      { nama: "Green Tea", harga: 18000, stok: 15 },
+      { nama: "Taro Tea", harga: 17000, stok: 10 }
+    ];
+    let transaksi = JSON.parse(localStorage.getItem("transaksi")) || [];
+    let pengguna = JSON.parse(localStorage.getItem("pengguna")) || { username: "admin", password: "admin123" };
+
+    function tampilLogin() {
+      const container = document.getElementById("content");
+      document.getElementById("nav").style.display = "none";
+      container.innerHTML = `
+        <div class="card">
+          <h2>Login</h2>
+          <label>Username</label>
+          <input type="text" id="loginUser" />
+          <label>Password</label>
+          <input type="password" id="loginPass" />
+          <button onclick="prosesLogin()">Masuk</button>
+        </div>`;
+    }
+
+    function prosesLogin() {
+      const u = document.getElementById("loginUser").value;
+      const p = document.getElementById("loginPass").value;
+      if (u === pengguna.username && p === pengguna.password) {
+        localStorage.setItem("isLogin", "true");
+        document.getElementById("nav").style.display = "flex";
+        tampilkan('dashboard');
+      } else {
+        alert("Username atau password salah");
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("isLogin");
+      tampilLogin();
+    }
+
+    function resetData() {
+  if (confirm("Yakin ingin menghapus semua data produk dan transaksi?")) {
+    localStorage.clear();
+    alert("Data berhasil di-reset. Silakan login ulang.");
+    location.reload();
+  }
+}
+
+    function tampilkan(menu) {
+      if (!localStorage.getItem("isLogin")) {
+        tampilLogin();
+        return;
+      }
+      const container = document.getElementById("content");
+      let html = "";
+      if (menu === 'dashboard') {
+        html = `
+          <div class="card">
+            <h2>Dashboard</h2>
+            <button onclick="tampilkan('input')">Input Pesanan</button>
+            <button onclick="tampilkan('produk')">Kelola Produk</button>
+            <button onclick="tampilkan('laporan')">Laporan Penjualan</button>
+            <button onclick="resetData()">Reset Data</button>
+          </div>`;
+      } else if (menu === 'input') {
+        let options = produkData.map(p => `<option value="${p.harga}" data-nama="${p.nama}">${p.nama} - Rp${p.harga}</option>`).join("");
+        html = `
+          <div class="card">
+            <h2>Input Pesanan</h2>
+            <label>Pilih Produk</label>
+            <select id="produk">${options}</select>
+            <label>Jumlah</label>
+            <input type="number" id="jumlah" value="1" min="1">
+            <label>Metode Pembayaran</label>
+            <select id="metode">
+              <option value="Tunai">Tunai</option>
+              <option value="QRIS">QRIS</option>
+            </select>
+            <div class="total" id="total">Total: Rp0</div>
+            <button onclick="simpanPesanan()">Simpan</button>
+          </div>`;
+      } else if (menu === 'produk') {
+        let daftarProduk = produkData.map((p, i) => `<p>${p.nama} - Rp${p.harga} (Stok: ${p.stok}) <button onclick="editProduk(${i})">Edit</button> <button onclick="hapusProduk(${i})">Hapus</button></p>`).join("");
+        html = `
+          <div class="card">
+            <h2>Kelola Produk</h2>
+            ${daftarProduk}
+            <label>Nama Produk Baru</label>
+            <input id="namaBaru" placeholder="Contoh: Thai Tea Coklat" />
+            <label>Harga</label>
+<input id="hargaBaru" type="number" />
+<label>Stok</label>
+<input id="stokBaru" type="number" />
+            <button onclick="tambahProduk()">Tambah Produk</button>
+          </div>`;
+      } else if (menu === 'laporan') {
+        let today = new Date().toISOString().slice(0, 10);
+        let filtered = transaksi.filter(t => t.tanggal === today);
+        let total = filtered.reduce((sum, t) => sum + t.total, 0);
+        let list = filtered.map(t => `<li>${t.namaProduk} x ${t.jumlah} = Rp${t.total.toLocaleString()} (${t.metode})</li>`).join("");
+        html = `
+          <div class="card">
+            <h2>Laporan Penjualan (${today})</h2>
+            <p>Total Penjualan: Rp${total.toLocaleString()}</p>
+            <p>Jumlah Transaksi: ${filtered.length}</p>
+            <ul>${list}</ul>
+            <button onclick="cetakLaporan()">Cetak Laporan</button>
+            <button onclick="resetData()">Reset Data</button>
+          </div>`;
+      }
+      container.innerHTML = html;
+      if (menu === 'input') hitungTotal();
+    }
+
+    function hitungTotal() {
+      const produk = document.getElementById("produk");
+      const jumlah = document.getElementById("jumlah");
+      const total = document.getElementById("total");
+      const harga = parseInt(produk.value);
+      const qty = parseInt(jumlah.value);
+      const totalHarga = harga * qty;
+      total.textContent = "Total: Rp" + totalHarga.toLocaleString();
+    }
+
+    function simpanPesanan() {
+      const produkSelect = document.getElementById("produk");
+      const namaProduk = produkSelect.options[produkSelect.selectedIndex].dataset.nama;
+      const harga = parseInt(produkSelect.value);
+      const jumlah = parseInt(document.getElementById("jumlah").value);
+      const metode = document.getElementById("metode").value;
+      const total = harga * jumlah;
+      const tanggal = new Date().toISOString().slice(0, 10);
+      const index = produkData.findIndex(p => p.nama === namaProduk);
+      if (index !== -1 && produkData[index].stok >= jumlah) {
+        produkData[index].stok -= jumlah;
+        transaksi.push({ namaProduk, harga, jumlah, metode, total, tanggal });
+        localStorage.setItem("transaksi", JSON.stringify(transaksi));
+        localStorage.setItem("produkData", JSON.stringify(produkData));
+        alert("Pesanan tersimpan!");
+        tampilkan("dashboard");
+      } else {
+        alert("Stok tidak mencukupi!");
+      }
+    }
+
+    function tambahProduk() {
+      const nama = document.getElementById("namaBaru").value;
+      const harga = parseInt(document.getElementById("hargaBaru").value);
+      const stok = parseInt(document.getElementById("stokBaru").value);
+      if (nama && harga && !isNaN(stok)) {
+        produkData.push({ nama, harga, stok });
+        localStorage.setItem("produkData", JSON.stringify(produkData));
+        tampilkan('produk');
+      }
+    }
+
+    function hapusProduk(index) {
+      produkData.splice(index, 1);
+      localStorage.setItem("produkData", JSON.stringify(produkData));
+      tampilkan('produk');
+    }
+
+    function editProduk(index) {
+      const namaBaru = prompt("Ubah nama produk", produkData[index].nama);
+      const hargaBaru = prompt("Ubah harga produk", produkData[index].harga);
+      const stokBaru = prompt("Ubah stok produk", produkData[index].stok);
+      if (namaBaru && hargaBaru && stokBaru) {
+        produkData[index] = { nama: namaBaru, harga: parseInt(hargaBaru), stok: parseInt(stokBaru) };
+        localStorage.setItem("produkData", JSON.stringify(produkData));
+        tampilkan('produk');
+      }
+    }
+
+    function cetakLaporan() {
+      let laporanWindow = window.open("", "_blank");
+      let today = new Date().toISOString().slice(0, 10);
+      let filtered = transaksi.filter(t => t.tanggal === today);
+      let html = `<html><head><title>Cetak Laporan</title></head><body>`;
+      html += `<h2>Laporan Penjualan ThaiTeaManis (${today})</h2>`;
+      html += `<ul>`;
+      let total = 0;
+      filtered.forEach(t => {
+        total += t.total;
+        html += `<li>${t.namaProduk} x ${t.jumlah} = Rp${t.total.toLocaleString()} (${t.metode})</li>`;
+      });
+      html += `</ul><p><strong>Total: Rp${total.toLocaleString()}</strong></p></body></html>`;
+      laporanWindow.document.write(html);
+      laporanWindow.document.close();
+      laporanWindow.print();
+    }
+
+    if (localStorage.getItem("isLogin")) {
+      document.getElementById("nav").style.display = "flex";
+      tampilkan("dashboard");
+    } else {
+      tampilLogin();
+    }
+</script>
+</body>
+</html>
